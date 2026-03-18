@@ -1,0 +1,129 @@
+.diff-viewer {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 14px;
+  color: #1a1a1a;
+  line-height: 1.6;
+}
+
+/* ─── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.diff-viewer__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid #e5e5e5;
+  margin-bottom: 14px;
+}
+
+.diff-viewer__badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.diff-viewer__view-btns {
+  display: flex;
+  gap: 2px;
+}
+
+/* ─── Badge ───────────────────────────────────────────────────────────────── */
+
+.diff-viewer__badge {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  border: 1px solid transparent;
+}
+
+.diff-viewer__badge--off {
+  opacity: 0.4;
+}
+
+.diff-viewer__badge--green {
+  background: #d4edda;
+  color: #155724;
+  border-color: #c3e6cb;
+}
+
+.diff-viewer__badge--red {
+  background: #f8d7da;
+  color: #721c24;
+  border-color: #f5c6cb;
+}
+
+.diff-viewer__badge--gray {
+  background: #f1f1f1;
+  color: #555;
+  border-color: #ddd;
+}
+
+/* ─── View button ─────────────────────────────────────────────────────────── */
+
+.diff-viewer__view-btn {
+  padding: 4px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.15s;
+  font-weight: 400;
+}
+
+.diff-viewer__view-btn--active {
+  background: #f0f0f0;
+  font-weight: 500;
+}
+
+/* ─── Panels ──────────────────────────────────────────────────────────────── */
+
+.diff-viewer__split-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.diff-viewer__panel {
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+
+.diff-viewer__panel-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+}
+
+.diff-viewer__doc-body {
+  line-height: 2;
+  word-break: break-word;
+}
+
+/* ─── Segments ────────────────────────────────────────────────────────────── */
+
+.diff-viewer__segment--added {
+  background: #d4edda;
+  color: #155724;
+  border-radius: 3px;
+  padding: 1px 3px;
+  text-decoration: none;
+}
+
+.diff-viewer__segment--deleted {
+  background: #f8d7da;
+  color: #721c24;
+  border-radius: 3px;
+  padding: 1px 3px;
+  text-decoration-color: #721c24;
+}
