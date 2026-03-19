@@ -259,8 +259,20 @@ export const update = async (sectionId, contentId) => {
     [sectionId, 1],
   );
 
-  if (currentContentId != contentId && !maxMergeId)
+  const lastMergeId = maxMergeId.rows[0].max;
+
+  console.log("Fetched max merge ID: ", maxMergeId.rows[0].max);
+  console.log("currentContentId = ", currentContentId);
+  console.log("contentId = ", contentId);
+  console.log(
+    "If condition = ",
+    currentContentId !== contentId && !lastMergeId,
+  );
+
+  if (currentContentId !== contentId && !lastMergeId) {
+    console.log("No Merge found, Saving words data!");
     update(sectionId, currentContentId);
+  }
 
   // Getting currentContentData
   const currentContentDataQuery = "SELECT data from public.content where id=$1";
@@ -296,7 +308,7 @@ export const update = async (sectionId, contentId) => {
     1,
     1,
   );
-  console.log(updatedDiffResult);
+  // console.log(updatedDiffResult);
 
   // Update the current content in section
   const updateContent =
