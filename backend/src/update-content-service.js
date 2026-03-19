@@ -63,7 +63,7 @@ function enrichDiffWithFormatting(diffResult) {
     const isOpeningTag =
       token.word.startsWith("<") && !token.word.startsWith("</");
     const isFormattingTag =
-      /^<(b|i|u|strong|em|mark|s|span|del|ins)[\s>]/i.test(token.word);
+      /^<(b|i|u|strong|em|mark|s|span|del|ins|a)[\s>]/i.test(token.word);
 
     if (
       isOpeningTag &&
@@ -113,6 +113,14 @@ function enrichDiffWithFormatting(diffResult) {
           newIndex: closingNewIndex,
         });
       } else if (token.type === "deleted") {
+        const lastWord = wordsBetween[wordsBetween.length - 1];
+        const closingOldIndex = lastWord
+          ? lastWord.oldIndex != null
+            ? lastWord.oldIndex + 1
+            : lastWord.newIndex + 1
+          : null;
+        
+        
         // Emit the full deleted sequence
         enriched.push({ ...token, type: "deleted" });
         wordsBetween.forEach((t) => {
@@ -121,7 +129,7 @@ function enrichDiffWithFormatting(diffResult) {
         enriched.push({
           type: "deleted",
           word: closingTag,
-          oldIndex: lastWord ? lastWord.oldIndex + 1 : null,
+          oldIndex: closingOldIndex,
         });
 
         wordsBetween.forEach((t) => {
