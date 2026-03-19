@@ -21,10 +21,10 @@ function tokenize(data) {
 }
 
 function calculateDiff(currentContentData, suggestedContentData) {
-  const currentWords = tokenize(currentContentData);
-  const suggestedWords = tokenize(suggestedContentData);
+  // const currentWords = tokenize(currentContentData);
+  // const suggestedWords = tokenize(suggestedContentData);
 
-  const chunks = diffArrays(currentWords, suggestedWords);
+  const chunks = diffArrays(currentContentData, suggestedContentData);
 
   const ops = [];
   let oldIdx = 0;
@@ -52,6 +52,46 @@ function calculateDiff(currentContentData, suggestedContentData) {
   }
 
   return ops;
+}
+
+function distributeFormattingTag(data) {
+  const tokens = tokenize(data);
+
+  const distributed = [];
+  let i = 0;
+
+  while (i < tokens.length) {
+    const token = tokens[i];
+    const isOpeningTag = token.startsWith("<") && !token.startsWith("</");
+    const isFormattingTag =
+      /^<(b|i|u|strong|em|mark|s|span|del|ins|a)[\s>]/i.test(token);
+
+    if (isOpeningTag && isFormattingTag) {
+      const tagName = token.match(/^<([a-zA-Z]+)/)[1];
+      const closingTag = `</${tagName}>`;
+      const wordsBetween = [];
+      let j = i + 1;
+
+      while (j < tokens.length) {
+        if (tokens[j] === closingTag) break;
+        wordsBetween.push(tokens[j]);
+        j++;
+      }
+      wordsBetween.forEach((t) => {
+        distributed.push(token);
+        distributed.push(t);
+        distributed.push(closingTag);
+      });
+      i = j + 1;
+      continue;
+    } else {
+      distributed.push(token);
+    }
+
+    i++;
+  }
+
+  return distributed;
 }
 
 function enrichDiffWithFormatting(diffResult) {
@@ -93,10 +133,11 @@ function enrichDiffWithFormatting(diffResult) {
         // FIX: emit opening tag once, then words, then closing tag once
         // First: mark any retained words between as deleted (they're being wrapped anew)
         wordsBetween.forEach((t) => {
-          if (t.type === "retained") {
+          if (t.type === "retained" || t.type === "deleted") {
             enriched.push({ ...t, type: "deleted" });
-          // } else {
-          //   enriched.push(t);
+            // enriched.push(t);
+            // } else {
+            //   enriched.push(t);
           }
         });
 
@@ -104,8 +145,10 @@ function enrichDiffWithFormatting(diffResult) {
         enriched.push({ ...token, type: "added" });
         wordsBetween.forEach((t) => {
           // FIX: retained words promoted to added need newIndex from oldIndex
-          const newIndex = t.newIndex ?? t.oldIndex ?? null;
-          enriched.push({ ...t, type: "added", newIndex });
+          if (t.type === "retained" || t.type === "added") {
+            const newIndex = t.newIndex ?? t.oldIndex ?? null;
+            enriched.push({ ...t, type: "added", newIndex });
+          }
         });
         enriched.push({
           type: "added",
@@ -119,12 +162,15 @@ function enrichDiffWithFormatting(diffResult) {
             ? lastWord.oldIndex + 1
             : lastWord.newIndex + 1
           : null;
-        
-        
+
         // Emit the full deleted sequence
         enriched.push({ ...token, type: "deleted" });
         wordsBetween.forEach((t) => {
-          enriched.push({ ...t, type: "deleted" });
+          if (
+            wordsBetween.type === "retained" ||
+            wordsBetween.type === "deleted"
+          )
+            enriched.push({ ...t, type: "deleted" });
         });
         enriched.push({
           type: "deleted",
@@ -140,8 +186,8 @@ function enrichDiffWithFormatting(diffResult) {
               type: "added",
               newIndex: t.newIndex ?? t.oldIndex ?? null,
             });
-          // } else if (t.type === "added") {
-          //   enriched.push(t);
+          } else if (t.type === "added") {
+            enriched.push(t);
           }
         });
       }
@@ -289,7 +335,10 @@ export const update = async (sectionId, contentId) => {
     currentContentId,
   ]);
 
-  const currentContentData = currentContentDataResult.rows[0].data;
+  const currentContentData = distributeFormattingTag(
+    currentContentDataResult.rows[0].data,
+  );
+  // console.log("current content data: ", currentContentData);
 
   // Getting suggestedContentData
   const suggestedContentDataQuery =
@@ -299,12 +348,16 @@ export const update = async (sectionId, contentId) => {
     suggestedContentDataQuery,
     [contentId],
   );
-  const suggestedContentData = suggestedContentDataResult.rows[0].data;
+  const suggestedContentData = distributeFormattingTag(
+    suggestedContentDataResult.rows[0].data,
+  );
+  console.log("suggested content data: ", suggestedContentData);
+
   const contributorId = suggestedContentDataResult.rows[0].contributor;
 
   // Calculate Diff between current content and suggested content
   const diffResult = calculateDiff(currentContentData, suggestedContentData);
-
+  // console.log(diffResult);
   const enrichedDiffResult = enrichDiffWithFormatting(diffResult);
   // console.log(enrichedDiffResult);
 
@@ -334,4 +387,5 @@ export const update = async (sectionId, contentId) => {
   // const changes = await generateChanges(updatedDiffResult, contributorId);
 
   return { diffResult: updatedDiffResult };
+  // return suggestedContentData;
 };
