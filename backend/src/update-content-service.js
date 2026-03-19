@@ -95,8 +95,8 @@ function enrichDiffWithFormatting(diffResult) {
         wordsBetween.forEach((t) => {
           if (t.type === "retained") {
             enriched.push({ ...t, type: "deleted" });
-          } else {
-            enriched.push(t);
+          // } else {
+          //   enriched.push(t);
           }
         });
 
@@ -132,8 +132,8 @@ function enrichDiffWithFormatting(diffResult) {
               type: "added",
               newIndex: t.newIndex ?? t.oldIndex ?? null,
             });
-          } else if (t.type === "added") {
-            enriched.push(t);
+          // } else if (t.type === "added") {
+          //   enriched.push(t);
           }
         });
       }
