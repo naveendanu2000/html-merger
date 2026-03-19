@@ -261,13 +261,13 @@ export const update = async (sectionId, contentId) => {
 
   const lastMergeId = maxMergeId.rows[0].max;
 
-  console.log("Fetched max merge ID: ", maxMergeId.rows[0].max);
-  console.log("currentContentId = ", currentContentId);
-  console.log("contentId = ", contentId);
-  console.log(
-    "If condition = ",
-    currentContentId !== contentId && !lastMergeId,
-  );
+  // console.log("Fetched max merge ID: ", maxMergeId.rows[0].max);
+  // console.log("currentContentId = ", currentContentId);
+  // console.log("contentId = ", contentId);
+  // console.log(
+  //   "If condition = ",
+  //   currentContentId !== contentId && !lastMergeId,
+  // );
 
   if (currentContentId !== contentId && !lastMergeId) {
     console.log("No Merge found, Saving words data!");
