@@ -11,6 +11,22 @@ interface Data {
   deleted_by?: string;
 }
 
+const image = (wordObject: Data): string => {
+  return `
+          <div
+            style="padding: 10px;display: inline-block;cursor:  pointer;background-color: ${
+              wordObject.update_type === "deleted"
+                ? "#FF8975"
+                : wordObject.update_type === "added"
+                  ? "#ABFF9E"
+                  : ""
+            }"
+          >
+            ${wordObject.word}
+          </div>
+          `;
+};
+
 function App() {
   const [data, setData] = useState<Data[]>();
 
@@ -36,9 +52,12 @@ function App() {
         className="mb-10"
         dangerouslySetInnerHTML={{
           __html:
-            data?.map((wordObject) => {
+            data
+              ?.map((wordObject) => {
                 const isTag = wordObject.word.startsWith("<");
-                if (isTag) return wordObject.word;
+                const isImageTag = wordObject.word.startsWith("<img");
+
+                if (isTag && !isImageTag) return wordObject.word;
 
                 let colorClass = "";
                 let tooltipText = "";
@@ -54,8 +73,8 @@ function App() {
                 }
 
                 return `
-              <span class="relative inline-block group">
-                <span class="${colorClass} cursor-pointer">${wordObject.word} </span>
+              <div class="relative inline-block group">
+                <div class="${colorClass} inline-block cursor-pointer">${isImageTag ? image(wordObject) : wordObject.word} </div>
                 <span
                   class="
                     absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50
@@ -66,7 +85,7 @@ function App() {
                 >
                   ${tooltipText}
                 </span>
-              </span>
+              </div>
             `;
               })
               .join("") ?? "",
