@@ -3,6 +3,12 @@ import { pool } from "./pool.js";
 
 function tokenize(data) {
   const tokens = [];
+  const formattingTagRegex =
+    /^<(b|i|u|strong|em|mark|s|span|del|ins|a)(\s[^>]*)?>$/i;
+  const selfClosingRegex = /\/>$/;
+
+  // First pass: raw tokens (tags and words)
+  const rawTokens = [];
   const regex = /(<[^>]+>|[^<]+)/g;
   let match;
 
@@ -11,9 +17,44 @@ function tokenize(data) {
     if (!raw) continue;
 
     if (raw.startsWith("<")) {
-      tokens.push(raw);
+      rawTokens.push(raw);
     } else {
-      tokens.push(...raw.split(/\s+/).filter(Boolean));
+      rawTokens.push(...raw.split(/\s+/).filter(Boolean));
+    }
+  }
+
+  // Second pass: distribute formatting tags onto each word inside them
+  let i = 0;
+  while (i < rawTokens.length) {
+    const token = rawTokens[i];
+
+    const isOpeningFormattingTag =
+      token.startsWith("<") &&
+      !token.startsWith("</") &&
+      !selfClosingRegex.test(token) &&
+      formattingTagRegex.test(token);
+
+    if (isOpeningFormattingTag) {
+      const tagName = token.match(/^<([a-zA-Z]+)/)[1];
+      const closingTag = `</${tagName}>`;
+
+      // Collect all tokens until the closing tag
+      let j = i + 1;
+      const inner = [];
+      while (j < rawTokens.length && rawTokens[j] !== closingTag) {
+        inner.push(rawTokens[j]);
+        j++;
+      }
+
+      // Wrap each inner word with the opening and closing tag
+      for (const word of inner) {
+        tokens.push(`${token}${word}${closingTag}`);
+      }
+
+      i = j + 1; // skip past the closing tag
+    } else {
+      tokens.push(token);
+      i++;
     }
   }
 
@@ -21,10 +62,11 @@ function tokenize(data) {
 }
 
 function calculateDiff(currentContentData, suggestedContentData) {
-  // const currentWords = tokenize(currentContentData);
-  // const suggestedWords = tokenize(suggestedContentData);
+  const currentWords = tokenize(currentContentData);
+  const suggestedWords = tokenize(suggestedContentData);
 
-  const chunks = diffArrays(currentContentData, suggestedContentData);
+  // const chunks = diffArrays(currentContentData, suggestedContentData);
+  const chunks = diffArrays(currentWords, suggestedWords);
 
   const ops = [];
   let oldIdx = 0;
@@ -54,155 +96,6 @@ function calculateDiff(currentContentData, suggestedContentData) {
   return ops;
 }
 
-function distributeFormattingTag(data) {
-  const tokens = tokenize(data);
-
-  const distributed = [];
-  let i = 0;
-
-  while (i < tokens.length) {
-    const token = tokens[i];
-    const isOpeningTag = token.startsWith("<") && !token.startsWith("</");
-    const isFormattingTag =
-      /^<(b|i|u|strong|em|mark|s|span|del|ins|a)[\s>]/i.test(token);
-
-    if (isOpeningTag && isFormattingTag) {
-      const tagName = token.match(/^<([a-zA-Z]+)/)[1];
-      const closingTag = `</${tagName}>`;
-      const wordsBetween = [];
-      let j = i + 1;
-
-      while (j < tokens.length) {
-        if (tokens[j] === closingTag) break;
-        wordsBetween.push(tokens[j]);
-        j++;
-      }
-      wordsBetween.forEach((t) => {
-        distributed.push(token);
-        distributed.push(t);
-        distributed.push(closingTag);
-      });
-      i = j + 1;
-      continue;
-    } else {
-      distributed.push(token);
-    }
-
-    i++;
-  }
-
-  return distributed;
-}
-
-function enrichDiffWithFormatting(diffResult) {
-  const enriched = [];
-  let i = 0;
-
-  while (i < diffResult.length) {
-    const token = diffResult[i];
-    const isOpeningTag =
-      token.word.startsWith("<") && !token.word.startsWith("</");
-    const isFormattingTag =
-      /^<(b|i|u|strong|em|mark|s|span|del|ins|a)[\s>]/i.test(token.word);
-
-    if (
-      isOpeningTag &&
-      isFormattingTag &&
-      (token.type === "added" || token.type === "deleted")
-    ) {
-      const tagName = token.word.match(/^<([a-zA-Z]+)/)[1];
-      const closingTag = `</${tagName}>`;
-      const wordsBetween = [];
-      let j = i + 1;
-
-      while (j < diffResult.length) {
-        if (diffResult[j].word === closingTag) break;
-        wordsBetween.push(diffResult[j]);
-        j++;
-      }
-
-      // FIX: closing tag index resolved once, not per-word
-      const lastWord = wordsBetween[wordsBetween.length - 1];
-      const closingNewIndex = lastWord
-        ? lastWord.newIndex != null
-          ? lastWord.newIndex + 1
-          : lastWord.oldIndex + 1
-        : null;
-
-      if (token.type === "added") {
-        // FIX: emit opening tag once, then words, then closing tag once
-        // First: mark any retained words between as deleted (they're being wrapped anew)
-        wordsBetween.forEach((t) => {
-          if (t.type === "retained" || t.type === "deleted") {
-            enriched.push({ ...t, type: "deleted" });
-            // enriched.push(t);
-            // } else {
-            //   enriched.push(t);
-          }
-        });
-
-        // Then: emit the full new wrapped sequence once
-        enriched.push({ ...token, type: "added" });
-        wordsBetween.forEach((t) => {
-          // FIX: retained words promoted to added need newIndex from oldIndex
-          if (t.type === "retained" || t.type === "added") {
-            const newIndex = t.newIndex ?? t.oldIndex ?? null;
-            enriched.push({ ...t, type: "added", newIndex });
-          }
-        });
-        enriched.push({
-          type: "added",
-          word: closingTag,
-          newIndex: closingNewIndex,
-        });
-      } else if (token.type === "deleted") {
-        const lastWord = wordsBetween[wordsBetween.length - 1];
-        const closingOldIndex = lastWord
-          ? lastWord.oldIndex != null
-            ? lastWord.oldIndex + 1
-            : lastWord.newIndex + 1
-          : null;
-
-        // Emit the full deleted sequence
-        enriched.push({ ...token, type: "deleted" });
-        wordsBetween.forEach((t) => {
-          if (
-            wordsBetween.type === "retained" ||
-            wordsBetween.type === "deleted"
-          )
-            enriched.push({ ...t, type: "deleted" });
-        });
-        enriched.push({
-          type: "deleted",
-          word: closingTag,
-          oldIndex: closingOldIndex,
-        });
-
-        wordsBetween.forEach((t) => {
-          if (t.type === "retained") {
-            // FIX: preserve newIndex (same as oldIndex for retained words)
-            enriched.push({
-              ...t,
-              type: "added",
-              newIndex: t.newIndex ?? t.oldIndex ?? null,
-            });
-          } else if (t.type === "added") {
-            enriched.push(t);
-          }
-        });
-      }
-
-      i = j + 1;
-      continue;
-    }
-
-    enriched.push(token);
-    i++;
-  }
-
-  return enriched;
-}
-
 async function saveDiff(
   diffResults,
   contributorId,
@@ -211,6 +104,7 @@ async function saveDiff(
   documentId,
 ) {
   console.log("Saving Data!");
+  console.log(diffResults);
 
   const client = await pool.connect();
   try {
@@ -243,6 +137,8 @@ async function saveDiff(
     const nextMergeId = (Number(maxMergeId.rows[0].max) || 0) + 1;
 
     for (const word of diffResults) {
+      if (word.word === "null" || !word.word) continue;
+
       let contentId = null;
       let newIndex = word.newIndex ?? null;
       let oldIndex = word.oldIndex ?? null;
@@ -277,6 +173,12 @@ async function saveDiff(
       placeholders.push(
         `($${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++},$${i++})`,
       );
+    }
+
+    if (placeholders.length === 0) {
+      console.log("No words to insert, skipping save.");
+      await client.query("COMMIT");
+      return [];
     }
 
     const query = `
@@ -315,14 +217,6 @@ export const update = async (sectionId, contentId) => {
 
   const lastMergeId = maxMergeId.rows[0].max;
 
-  // console.log("Fetched max merge ID: ", maxMergeId.rows[0].max);
-  // console.log("currentContentId = ", currentContentId);
-  // console.log("contentId = ", contentId);
-  // console.log(
-  //   "If condition = ",
-  //   currentContentId !== contentId && !lastMergeId,
-  // );
-
   if (currentContentId !== contentId && !lastMergeId) {
     console.log("No Merge found, Saving words data!");
     update(sectionId, currentContentId);
@@ -335,10 +229,7 @@ export const update = async (sectionId, contentId) => {
     currentContentId,
   ]);
 
-  const currentContentData = distributeFormattingTag(
-    currentContentDataResult.rows[0].data,
-  );
-  // console.log("current content data: ", currentContentData);
+  const currentContentData = currentContentDataResult.rows[0].data;
 
   // Getting suggestedContentData
   const suggestedContentDataQuery =
@@ -348,22 +239,19 @@ export const update = async (sectionId, contentId) => {
     suggestedContentDataQuery,
     [contentId],
   );
-  const suggestedContentData = distributeFormattingTag(
-    suggestedContentDataResult.rows[0].data,
-  );
-  console.log("suggested content data: ", suggestedContentData);
+  const suggestedContentData = suggestedContentDataResult.rows[0].data;
 
   const contributorId = suggestedContentDataResult.rows[0].contributor;
 
   // Calculate Diff between current content and suggested content
-  const diffResult = calculateDiff(currentContentData, suggestedContentData);
-  // console.log(diffResult);
-  const enrichedDiffResult = enrichDiffWithFormatting(diffResult);
-  // console.log(enrichedDiffResult);
+  const diffResult = calculateDiff(
+    currentContentData,
+    suggestedContentData,
+  ).filter((word) => word.word !== "null" || !word.word);
+  // console.log("Diff Results: ", diffResult);
 
-  // Saving the updated Content
   const updatedDiffResult = await saveDiff(
-    enrichedDiffResult,
+    diffResult,
     contributorId,
     contentId,
     1,
@@ -382,10 +270,5 @@ export const update = async (sectionId, contentId) => {
 
   console.log(updated_result.rows[0]);
 
-  // Updating diff summary
-  // console.log("Contributor ID: ", contributorId);
-  // const changes = await generateChanges(updatedDiffResult, contributorId);
-
   return { diffResult: updatedDiffResult };
-  // return suggestedContentData;
 };

@@ -47,18 +47,28 @@ function App() {
   }, []);
 
   return (
-    <div className="flex flex-col items-center justify-center p-10 max-w-200 shadow">
+    <div className="flex flex-col items-center justify-center p-10 max-w-200 shadow mb-10 [&_ul]:list-disc [&_ul]:ml-6 [&_ol]:list-decimal [&_ol]:ml-6 [&_li]:my-1">
       <div
         className="mb-10"
         dangerouslySetInnerHTML={{
           __html:
             data
               ?.map((wordObject) => {
-                const isTag = wordObject.word.startsWith("<");
-                const isImageTag = wordObject.word.startsWith("<img");
+                const word = wordObject.word;
+                const isImageTag = word.startsWith("<img");
 
-                if (isTag && !isImageTag) return wordObject.word;
+                // Match merged formatting tokens like <b>banana</b>, <strong>text</strong>
+                const mergedFormatMatch = word.match(
+                  /^(<(b|i|u|strong|em|mark|s|span|del|ins|a)(?:\s[^>]*)?>)(.*?)(<\/\2>)$/i,
+                );
 
+                // Plain structural tags like <div>, </div>, <p>, <br/> — render as-is
+                const isStructuralTag =
+                  word.startsWith("<") && !isImageTag && !mergedFormatMatch;
+
+                if (isStructuralTag) return word;
+
+                // Build color class and tooltip
                 let colorClass = "";
                 let tooltipText = "";
 
@@ -72,9 +82,21 @@ function App() {
                   tooltipText = `Created By: ${wordObject.created_by}`;
                 }
 
+                // For merged formatting tokens, wrap the inner word with the formatting tag
+                // e.g. <b>banana</b> => <b><span class="text-red-500">banana</span></b>
+                let displayContent: string;
+                if (mergedFormatMatch) {
+                  const [, openTag, , innerWord, closeTag] = mergedFormatMatch;
+                  displayContent = `${openTag}<span class="${colorClass}">${innerWord}</span>${closeTag}`;
+                } else if (isImageTag) {
+                  displayContent = image(wordObject);
+                } else {
+                  displayContent = word;
+                }
+
                 return `
               <div class="relative inline-block group">
-                <div class="${colorClass} inline-block cursor-pointer">${isImageTag ? image(wordObject) : wordObject.word} </div>
+                <div class="${mergedFormatMatch ? "" : colorClass} inline-block cursor-pointer">${displayContent} </div>
                 <span
                   class="
                     absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50

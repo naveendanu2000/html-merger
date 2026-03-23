@@ -12,7 +12,7 @@ router.get("/api/update/:sectionId/:contentId", async (req, res) => {
 });
 
 router.get("/api/changes/:sectionId/:documentId", async (req, res) => {
-  const { sectionId, contentId, documentId } = req.params;
+  const { sectionId, documentId } = req.params;
   const response = await generateChanges(sectionId, documentId);
 
   res.send(response);
