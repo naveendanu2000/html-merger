@@ -21,9 +21,6 @@ ON your_table USING GIN(search_vector);
 CREATE INDEX idx_trgm
 ON your_table USING GIN (search_text gin_trgm_ops);
 
--- Composite for sorting/pagination (critical at scale)
-CREATE INDEX idx_content_score_id ON public.content (id DESC);
-
 -- Optional: Tune similarity threshold
 SET pg_trgm.similarity_threshold = 0.2;
 
