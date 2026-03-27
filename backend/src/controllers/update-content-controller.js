@@ -1,6 +1,6 @@
 import express from "express";
 import { update } from "../services/update-content-service.js";
-import { generateChanges } from "../generate-changes-service.js";
+import { generateChanges } from "../services/generate-changes-service.js";
 import { searchContent } from "../services/search-content-service.js";
 
 const router = express.Router();

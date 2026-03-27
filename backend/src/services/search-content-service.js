@@ -1,4 +1,4 @@
-import { pool } from "../pool";
+import { pool } from "../pool.js";
 
 export const searchContent = async (text, score, id) => {
   const hasCursor = score !== undefined && id !== undefined;

@@ -1,4 +1,4 @@
-import { pool } from "./pool.js";
+import { pool } from "../pool.js";
 
 export const generateChanges = async (sectionId, documentId) => {
   const client = await pool.connect();
