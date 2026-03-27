@@ -1,4 +1,4 @@
-import { pool } from "./pool.js";
+import { pool } from "../pool.js";
 import { diffArrays } from "diff";
 
 function tokenize(data) {

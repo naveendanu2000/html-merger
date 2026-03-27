@@ -3,8 +3,7 @@ configDotenv();
 
 import express from "express";
 import cors from "cors";
-import { pool } from "./pool.js";
-import { updateContentRouter } from "./update-content-controller.js";
+import { updateContentRouter } from "./controllers/update-content-controller.js";
 
 const app = express();
 

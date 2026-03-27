@@ -1,5 +1,5 @@
 import { diffArrays } from "diff";
-import { pool } from "./pool.js";
+import { pool } from "../pool.js";
 
 function tokenize(data) {
   const tokens = [];
