@@ -138,3 +138,26 @@ SET pg_trgm.similarity_threshold = 0.2;
 
     ORDER BY score DESC, id DESC
     LIMIT 50;
+
+
+
+  -- trail query
+  EXPLAIN (ANALYZE, BUFFERS) WITH filtered AS (
+  SELECT id, data,
+         search_vector,
+         search_text
+  FROM public.content
+  WHERE
+    search_vector @@ plainto_tsquery('comp')
+    OR search_text ILIKE '%comp%'
+),
+ranked AS (
+  SELECT id, data,
+         ts_rank(search_vector, plainto_tsquery('comp')) AS fts_score,
+         similarity(search_text, 'comp') AS trigram_score
+  FROM filtered
+)
+SELECT id, data,
+       (0.7 * fts_score + 0.3 * trigram_score) AS score
+FROM ranked
+ORDER BY score DESC, id DESC;
