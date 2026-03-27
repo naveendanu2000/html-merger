@@ -23,6 +23,8 @@ router.get("/api/search/:text", async (req, res) => {
   const { text } = req.params;
   const { score, id } = req.query;
 
+  if (text === undefined) res.status(400).send("Bad Request!");
+
   if (score && id) {
     const scoreNum = Number(score);
     const idNum = Number(id);
