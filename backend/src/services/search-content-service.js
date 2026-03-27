@@ -4,21 +4,29 @@ export const searchContent = async (text, score, id) => {
   const hasCursor = score !== undefined && id !== undefined;
 
   const query = `
-    WITH ranked AS (
+    WITH filtered AS (
       SELECT 
         id,
-        html_content,
-        ts_rank(search_vector, plainto_tsquery($1)) AS fts_score,
-        similarity(search_text, $1) AS trigram_score
-      FROM your_table
+        data,
+        search_vector,
+        search_text
+      FROM public.content
       WHERE
         search_vector @@ plainto_tsquery($1)
-        OR search_text % $1
+        OR search_text ILIKE '%' || $1 || '%'
+    ),
+    ranked AS (
+      SELECT 
+        id,
+        data,
+        ts_rank(search_vector, plainto_tsquery($1)) AS fts_score,
+        similarity(search_text, $1) AS trigram_score
+      FROM filtered
     ),
     scored AS (
       SELECT
         id,
-        html_content,
+        data,
         (0.7 * fts_score + 0.3 * trigram_score) AS score
       FROM ranked
     )
