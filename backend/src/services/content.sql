@@ -138,7 +138,7 @@ SET pg_trgm.similarity_threshold = 0.2;
 
 
 
-  -- trail query
+  -- trial query
   EXPLAIN (ANALYZE, BUFFERS) WITH filtered AS (
   SELECT id, data,
          search_vector,
