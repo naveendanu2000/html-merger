@@ -4,9 +4,12 @@ ADD COLUMN search_text TEXT GENERATED ALWAYS AS (
 ) STORED,
 
 -- Full-text vector (auto-generated)
-ALTER TABLE public.content
-ADD COLUMN search_text TEXT GENERATED ALWAYS AS (
-  regexp_replace(data, '<[^>]+>', '', 'g')
+ALTER TABLE your_table
+ADD COLUMN search_vector tsvector GENERATED ALWAYS AS (
+  to_tsvector(
+    'english',
+    regexp_replace(html_content, '<[^>]+>', '', 'g')
+  )
 ) STORED;
 
 
