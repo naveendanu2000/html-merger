@@ -161,3 +161,42 @@ SELECT id, data,
        (0.7 * fts_score + 0.3 * trigram_score) AS score
 FROM ranked
 ORDER BY score DESC, id DESC;
+
+
+-------------------------------- Insertion/Updation Optimizations ---------------------------------
+
+-- Option 1
+-- async indexing - add is_indexed column, index the not indexed rows later, FOR UPDATE SKIP locked
+
+-- Option 2
+-- Partitioning - partition content table by the created_at(yearly) then indexes will be smaller - faster insertion and updation
+
+-- Option 3
+-- Remove heavier index, that is Trigram-GIN index, assuming the user will atleast search for a word or a sentence and not small substring which are not complete words.
+
+
+-- for insertion optimization (FK contributor(content) --> id(user))
+CREATE INDEX idx_content_contributor 
+  ON content(contributor);
+
+
+-- Async indexing - fast insertion/updation response - index later
+-- install pg_cron extension (once)
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+
+-- schedule the job every 10 seconds
+SELECT cron.schedule('sync-search-index', '10 seconds', $$
+  UPDATE content
+  SET
+    search_text   = regexp_replace(html_content, '<[^>]+>', '', 'g'),
+    search_vector = to_tsvector('english', regexp_replace(html_content, '<[^>]+>', '', 'g')),
+    indexed       = true
+  WHERE indexed = false
+  ORDER BY id ASC
+  LIMIT 1000;
+$$);
+```
+```
+-- Insert happens     → indexed = false
+-- 10 seconds later   → pg_cron fires, processes up to 1000 rows
+-- Search available   → within 10 seconds of insert
