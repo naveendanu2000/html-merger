@@ -15,7 +15,7 @@ app.use(
 );
 app.use(updateContentRouter);
 
-app.get("/", (req, res) => {
+app.get("/", async (req, res) => {
   res.send("Welcome to HTML-Merger backend!");
 });
 

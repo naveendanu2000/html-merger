@@ -28,7 +28,7 @@ export const searchContent = async (text, score, id) => {
       word_similarity($1, c.search_text) AS trigram_score
     FROM public.content c
     WHERE
-      c.search_text %> $1           -- trigram threshold operator (uses GIN index)
+      c.search_text <% $1           -- trigram threshold operator (uses GIN index)
       AND NOT (c.search_vector @@ websearch_to_tsquery('english', $1))
     ),
     deduped AS (

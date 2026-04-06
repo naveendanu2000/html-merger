@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@opensearch-project/opensearch": "^3.5.1",
     "cors": "^2.8.6",
     "diff": "^8.0.3",
     "dotenv": "^17.3.1",
