@@ -4,6 +4,7 @@ import { generateChanges } from "../services/generate-changes-service.js";
 import { searchContent } from "../services/search-content-service.js";
 import { createContentIndex } from "../services/create-openSearch-index.js";
 import { syncContent } from "../services/sync-openSearch-index.js";
+import { openSearchContent } from "../services/search-content-openSearch.js";
 
 const router = express.Router();
 
@@ -55,12 +56,31 @@ router.get("/create/index/content", async (req, res) => {
 
 router.get("/sync", async (req, res) => {
   try {
-    const response = await syncContent();
-    console.log(response);
+    await syncContent();
   } catch (error) {
     console.log(error);
   }
   res.send("syncing search contentIndex created!");
+});
+
+router.get("/api/opensearch/:text", async (req, res) => {
+  const { text } = req.params;
+  const { score, id } = req.query;
+
+  if (text === undefined) res.status(400).send("Bad Request!");
+
+  if (score && id) {
+    const scoreNum = Number(score);
+    const idNum = Number(id);
+
+    if (Number.isNaN(scoreNum) || Number.isNaN(idNum)) {
+      return res.status(400).send("Bad Request!");
+    }
+  }
+
+  const response = await openSearchContent(text, score, id);
+
+  res.send(response);
 });
 
 export { router as updateContentRouter };

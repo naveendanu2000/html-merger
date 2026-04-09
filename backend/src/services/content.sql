@@ -1,7 +1,7 @@
 ALTER TABLE public.content 
 ADD COLUMN search_text TEXT GENERATED ALWAYS AS (
   regexp_replace(html_content, '<[^>]+>', '', 'g')
-) STORED,
+) STORED;
 
 -- Full-text vector (auto-generated)
 ALTER TABLE your_table

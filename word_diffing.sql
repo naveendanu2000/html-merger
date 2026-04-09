@@ -123,12 +123,13 @@ CREATE TABLE IF NOT EXISTS public.content
     contributor bigint NOT NULL,
     created_at time with time zone DEFAULT now(),
     status text COLLATE pg_catalog."default" NOT NULL DEFAULT 'pending'::text,
+    search_text text COLLATE pg_catalog."default" GENERATED ALWAYS AS (regexp_replace(data, '<[^>]+>'::text, ''::text, 'g'::text)) STORED,
+    is_synced boolean DEFAULT false,
     CONSTRAINT content_pkey PRIMARY KEY (id),
     CONSTRAINT contributor FOREIGN KEY (contributor)
         REFERENCES public."user" (id) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
-        NOT VALID
 )
 
 TABLESPACE pg_default;
@@ -174,3 +175,82 @@ INSERT INTO public.content(
     inside a long block of text. Multiple <strike>strikethrough</strike> <b> elements are included too </b>.
 </p>
 ', 3);
+
+CREATE OR REPLACE FUNCTION public.insert_random_content_bulk_words()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    i INT;
+    j INT;
+    v_data TEXT;
+    v_contributor INT;
+    words TEXT[] := ARRAY[
+        'lorem','ipsum','dolor','sit','amet','consectetur','adipiscing','elit',
+        'integer','nec','odio','praesent','libero','sed','cursus','ante','dapibus',
+        'diam','nisi','nulla','quis','sem','at','nibh','elementum','imperdiet',
+        'duis','sagittis','ipsum','praesent','mauris','fusce','nec','tellus',
+        'sed','augue','semper','porta','massa','vestibulum','lacinia','arcu',
+        'eget','nulla','class','aptent','taciti','sociosqu','ad','litora','torquent'
+    ];
+
+    -- helper vars
+    sentence TEXT;
+    paragraph TEXT;
+BEGIN
+    FOR i IN 1..100 LOOP
+        v_contributor := (floor(random() * 4) + 1)::int;
+
+        -- build paragraph
+        paragraph := '';
+        FOR j IN 1..50 LOOP
+            sentence := words[(floor(random()*array_length(words,1))+1)::int] || ' ';
+            paragraph := paragraph || sentence;
+        END LOOP;
+
+        v_data := '
+        <div class="container">
+            <h1>Random Content</h1>
+
+            <p>' || paragraph || '</p>
+
+            <h2>Section ' || (floor(random()*100))::int || '</h2>
+
+            <p>' || paragraph || '</p>
+
+            <ul>
+                <li>' || words[(floor(random()*array_length(words,1))+1)::int] || '</li>
+                <li>' || words[(floor(random()*array_length(words,1))+1)::int] || '</li>
+                <li>' || words[(floor(random()*array_length(words,1))+1)::int] || '</li>
+            </ul>
+
+            <ol>
+                <li>' || words[(floor(random()*array_length(words,1))+1)::int] || '</li>
+                <li>' || words[(floor(random()*array_length(words,1))+1)::int] || '</li>
+            </ol>
+
+            <table border="1">
+                <tr><th>Col1</th><th>Col2</th></tr>
+                <tr>
+                    <td>' || words[(floor(random()*array_length(words,1))+1)::int] || '</td>
+                    <td>' || words[(floor(random()*array_length(words,1))+1)::int] || '</td>
+                </tr>
+            </table>
+
+            <p>Visit <a href="https://example.com/' || i || '">example link</a></p>
+
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUA" />
+
+            <blockquote>' || paragraph || '</blockquote>
+
+            <footer>Generated at ' || now() || '</footer>
+        </div>
+        ';
+
+        INSERT INTO public.content(data, contributor)
+        VALUES (v_data, v_contributor);
+    END LOOP;
+END;
+$$;
+
+SELECT public.insert_random_content_bulk_words();

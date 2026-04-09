@@ -1,5 +1,9 @@
 import { Worker } from "worker_threads";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export function syncContent() {
   return new Promise((resolve, reject) => {
